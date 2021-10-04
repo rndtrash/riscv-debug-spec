@@ -1,103 +1,104 @@
-\chapter{Introduction}
+\chapter{Вступление}
 \label{sec:intro}
 
-When a design progresses from simulation to hardware implementation, a user's
-control and understanding of the system's current state drops dramatically.
-To help bring up and debug low level software and hardware,
-it is critical to have good debugging support built into the hardware.
-When a robust OS is running on a core, software can handle many
-debugging tasks. However, in many scenarios, hardware support is essential.
+Как только проект прогрессирует из симуляции в реализацию на ``железе'', у пользователя
+существенно снижается уровень контроля и понимания текущего состояния системы.
+Чтобы помочь в создании и отладке низкоуровневого ПО и АО,
+важно иметь хорошую поддержку отладки, встроенную в само ядро.
+Когда на ядре работает надёжная ОС, ПО может взять на себя множество
+задач отладки. Однако в большинстве случаев важна поддержка в самом оборудовании.
 
-This document outlines a standard architecture for debug support
-on RISC-V hardware platforms. This architecture allows a variety of implementations and
-tradeoffs, which is complementary to the wide range of RISC-V implementations.
-At the same time, this specification defines common interfaces to
-allow debugging tools and components to target a variety of hardware
-platforms based on the RISC-V ISA.
+Данный документ излагает стандартную архитектуру для поддержки отладки
+на платформах с ядром RISC-V. Данная архитектура допускает множество реализаций и
+компромиссов, что приветствуется в широком спектре реализаций RISC-V.
+В то же время эта спецификация определяет общие интерфейсы, позволяющие
+отладчикам и компонентам поддерживать множество аппаратных платформ
+на основе архитектуры набора команд RISC-V.
 
-System designers may choose to add additional hardware debug support,
-but this specification defines a standard interface for common
-functionality.
+Разработчики систем могут добавить дополнительную аппаратную поддержку отладки,
+но эта спецификация определяет только стандартный интерфейс для базового
+функционала.
 
-\section{Terminology}
+\section{Терминология}
 
 \begin{description}[style=nextline]
     \item[AMO]
-        Atomic Memory Operation.
+        Atomic Memory Operation - атомарная операция над памятью.
     \item[BYPASS]
-        JTAG instruction that selects a single bit data register, also called BYPASS.
-    \item[component]
-        A RISC-V core, or other part of a hardware platform.
-        Typically all components will be connected to a single system
-        bus.
+        Инструкция JTAG, предназначенная для выбора регистра обхода в качестве регистра данных, также называемая BYPASS.
+    \item[компонент]
+        Ядро RISC-V или любая другая часть аппаратной платфомы.
+        Как правило, все компоненты будут подключены к одной системной
+        шине.
     \item[CSR]
-        Control and Status Register.
+        Control and Status Register - регистр контроля/статуса.
     \item[DM]
-        Debug Module (see Section \ref{dm}).
+        Debug Module - отладочный модуль (см. Раздел \ref{dm}).
     \item[DMI]
-        Debug Module Interface (see Section \ref{dmi}).
+        Debug Module Interface - интерфейс отладочного модуля (см. Раздел \ref{dmi}).
     \item[DR]
-        JTAG Data Register.
+        JTAG Data Register - регистр данных JTAG.
     \item[DTM]
-        Debug Transport Module (see Section \ref{dtm}).
+        Debug Transport Module - модуль передачи отладочной информации (см. Раздел \ref{dtm}).
     \item[DXLEN]
-        Debug XLEN, which is the widest XLEN a hart supports, ignoring the
-        current value of \Fmxl in \Rmisa.
+        Debug XLEN - XLEN Отладчика, являющийся самым широким XLEN,
+        поддерживаемым hart, игнорируя текущее значение \Fmxl в \Rmisa.
     \item[GPR]
-        General Purpose Register.
-    \item[hardware platform]
-        A single system consisting of one or more \emph{components}.
+        General Purpose Register - регистр общего назначения.
+    \item[аппаратная платформа]
+        Система, состоящая из одного или нескольких \emph{компонентов}.
     \item[hart]
-        A hardware thread in a RISC-V core.
+        HARdware Thread - аппаратный поток в ядре RISC-V.
     \item[IDCODE]
-        32-bit Identification CODE, and a JTAG instruction that returns the IDCODE value.
+        32-bit Identification CODE - 32-битный идентифицирующий код, а также инструкция JTAG,
+        возвращающая значение IDCODE.
     \item[IR]
-        JTAG Instruction Register.
+        JTAG Instruction Register - регистр инструкции JTAG.
     \item[JTAG]
-        Refers to work done by IEEE's Joint Test Action Group, described in
+        Имеется ввиду работа, проделанная IEEE Joint Test Action Group, описанная в
         IEEE 1149.1.
     \item[NAPOT]
-        Naturally Aligned Powers-Of-Two.
+        Naturally Aligned Powers-Of-Two - выровненный по степени двойки.
     \item[NMI]
-        Non-Maskable Interrupt.
-    \item[physical address]
-        An address that is directly usable on the system bus.
+        Non-Maskable Interrupt - немаскируемое прерывание.
+    \item[физический адрес]
+        Адрес, непосредственно используемый в системной шине.
     \item[SBA]
-        System Bus Access (see Section \ref{systembusaccess}).
+        System Bus Access - доступ к системной шине (см. Раздел \ref{systembusaccess}).
     \item[TAP]
-        Test Access Port, defined in IEEE 1149.1.
+        Test Access Port - порт тестирования. Определение дано в IEEE 1149.1.
     \item[TM]
-        Trigger Module (see Section \ref{tm}).
-    \item[virtual address]
-        An address as a hart sees it. If the hart is using address translation this
-        may be different from the physical address. If there is no
-        translation then it will be the same.
+        Trigger Module - модуль триггера (см. Раздел \ref{tm}).
+    \item[виртуальный адрес]
+        Адрес с точки зрения hart. Если hart использует преобразование адресов, то
+        виртуальный адрес может отличаться от физического. Если не выполнены никакие преобразования,
+        то адреса будут одинаковыми.
     \item[\Rxepc]
-        The exception program counter CSR (e.g. \Rmepc) that is appropriate for
-        the mode being trapped to.
+        CSR со счётчиком команд исключения (например \Rmepc), применимый в
+        режиме, в который вводит отладочная ловушка.
 \end{description}
 
-\section{Context}
+\section{Контекст}
 
-\begin{steps}{This document is written to work with:}
+\begin{steps}{Документ использует термины, описанные в:}
 \item The RISC-V Instruction Set Manual, Volume I: User-Level ISA, Document
     Version 2.2 (the ISA Spec)
 \item The RISC-V Instruction Set Manual, Volume II: Privileged Architecture,
     Version 1.12 (the Privileged Spec)
 \end{steps}
 
-\subsection{Versions}
+\subsection{Версии}
 
-Version 0.13 of this document was ratified by the RISC-V Foundation's board.
-Versions 0.13.$x$ are bug fix releases to that ratified specification.
+Версия 0.13 данного документа была утверждена комиссией фонда RISC-V.
+Версии 0.13.$x$ являются исправлениями ошибок в той утверждённой спецификации.
 
-Version 0.14 was a working version that was never officially ratified.
+Версия 0.14 была черновиком, который никогда не был официально ратифицирован.
 
-Version 1.0.0 is almost entirely forwards and backwards compatible with Version 0.13.
+Версия 1.0.0 почти что полностью прямо и обратно совместима с версией 0.13.
 
 \newcommand{\PR}[1]{\href{https://github.com/riscv/riscv-debug-spec/pull/#1}{\##1}}
 
-\subsubsection{Bugfixes from 0.13 to 1.0}
+\subsubsection{Исправления ошибок с 0.13 по 1.0}
 
 \begin{steps}{Changes that fix a bug in the spec:}
     \item Fix order of operations described in \RdmSbdataZero. \PR{392}
@@ -108,7 +109,7 @@ Version 1.0.0 is almost entirely forwards and backwards compatible with Version 
     \item Clarify that harts halt out of reset if \FdmDmcontrolHaltreq=1. \PR{419}
 \end{steps}
 
-\subsubsection{Incompatible Changes from 0.13 to 1.0}
+\subsubsection{Несовместимые изменения с 0.13 по 1.0}
 
 \begin{steps}{Changes that are not backwards-compatible. Debuggers or
 hardware implementations that implement 0.13 will have to change something in
@@ -121,7 +122,7 @@ order to implement 1.0:}
     \item Add \FcsrIcountPending to \RcsrIcount. \PR{574}
 \end{steps}
 
-\subsubsection{Minor Changes from 0.13 to 1.0}
+\subsubsection{Небольшие изменения с 0.13 по 1.0}
 
 \begin{steps}{Changes that slightly modify defined behavior. Technically backwards
 incompatible, but unlikely to be noticeable:}
@@ -145,7 +146,7 @@ incompatible, but unlikely to be noticeable:}
         \RcsrTdataThree are writable. \PR{598}
 \end{steps}
 
-\subsubsection{New Features from 0.13 to 1.0}
+\subsubsection{Новый функционал с 0.13 с 1.0}
 
 \begin{steps}{New backwards-compatible feature that did not exist before:}
     \item Add halt groups and external triggers in Section~\ref{hrgroups}. \PR{404}
@@ -176,138 +177,141 @@ incompatible, but unlikely to be noticeable:}
         when ndmreset is complete. \PR{594}
     \item Add \FcsrTmexttriggerIntctl to support triggers from an interrupt controller. \PR{599}
 \end{steps}
-\section{About This Document}
+\section{Об этом документе}
 
-\subsection{Structure}
+\subsection{Структура}
 
-This document contains two parts. The main part of the document is the
-specification, which is given in the numbered chapters. The second part
-of the document is a set of appendices. The information
-in the appendices is intended to clarify and provide examples, but is
-not part of the actual specification.
+Этот документ состоит из двух частей. Главная часть документа - это
+спецификация, данная в нескольких главах. Во второй части данного документа
+находится приложение. Информация в приложении предназначена для уточнения
+и предоставления примеров, но это не является частью самой спецификации.
 
-\subsection{ISA vs. non-ISA}
+\subsection{ISA против не-ISA}
 
-This specification consists of both ISA and non-ISA parts. ISA parts specify
-hart state and behavior. Non-ISA parts specify non-hart state and behavior.
-Chapters whose contents are solely one or the other are labeled as such in their
-title. Chapters without such a label apply to both ISA and non-ISA
+Эта спецификация состоит как из частей, входящих в ISA, так и наоборот.
+Части ISA определяют состояние и поведение hart, а части не-ISA - состояние и поведение
+всего остального
+Главы, в которых содержатся только части, (не)относящиеся к ISA, отмечены как таковые
+в заголовке. Главы без уточнения в заголовке относятся как к ISA, так и к не-ISA.
 
-\subsection{Register Definition Format}
+\subsection{Формат определений регистров}
 
-All register definitions in this document follow the format shown below.  A
-simple graphic shows which fields are in the register. The upper and lower bit
-indices are shown to the top left and top right of each field. The total number
-of bits in the field are shown below it.
+Все определения регистров в этом документе следуют показанному ниже формату.
+Простой график показывает положение полей в регистре. Номер верхнего и нижнего бита
+отмечен соответственно в верхнем левом и верхнем правом углу каждого поля. Суммарное количество
+битов в поле написано под ним.
 
-After the graphic follows a table which for each field lists its name,
-description, allowed accesses, and reset value. The allowed accesses are listed
-in Table~\ref{tab:access}. The reset value is either a constant or ``Preset.''
-The latter means it is an implementation-specific legal value.
+После графика следует таблица, обозначающая имя, описание, разрешённый доступ и
+значение сброса для каждого поля. Разрешённые доступы перечислены в Таблице~\ref{tab:access}.
+Значение сброса является либо константой, либо ``Предустановленно.''
+Второе обозначение значит, что регистр имеет действительное значение, зависящее
+от реализации.
 
-Names of registers and their fields are hyperlinks to their definition, and are
-also listed in the index on page \pageref{index}.
+Имена регистров и их поля являются гиперссылками на их определение. Также они
+находятся в перечне на странице \pageref{index}.
 
 \input{sample_registers.tex}
 
 \begin{table}[htp]
     \centering
-    \caption{Register Access Abbreviations}
+    \caption{Аббревиатуры доступа к регистру}
     \label{tab:access}
     \begin{tabulary}{\textwidth}{|l|L|}
         \hline
-        R & Read-only. \\
+        R & Read-only - только для чтения. \\
         \hline
-        R/W & Read/Write. \\
+        R/W & Read/Write - чтение/запись. \\
         \hline
-        R/W1C & Read/Write Ones to Clear. Writing 0 to every bit has no effect.
-        Writing 1 to every bit clears the field. The result of other writes is
-        undefined. \\
+        R/W1C & Read/Write Ones to Clear - чтение/запись, единицы для очистки.
+        Запись нуля в каждый бит не имеет какого либо эффекта.
+        Запись единицы в каждый бит очищает поле. Результат остальных операций
+        не определён. \\
         \hline
-        WARZ & Write any, read zero. A debugger may write any value. When read
-        this field returns 0. \\
+        WARZ & Write any, read zero - любая запись, чтение - ноль.
+        Отладчик может записать любое значение. При чтении
+        это поле возвращает 0. \\
         \hline
-        W1 & Write-only. Only writing 1 has an effect. When read the returned
-        value should be 0. \\
+        W1 & Write-only - только для записи.
+        Только запись единиц влияет на значение. При чтении возвращённое
+        значение должно быть равным нулю. \\
         \hline
-        WARL & Write any, read legal. A debugger may write any value. If a
-        value is unsupported, the implementation converts the value to one that
-        is supported. \\
+        WARL & Write any, read legal - любая запись, чтение допустимого [значения].
+        Отладчик может записать любое значение. Если значение
+        не поддерживается, реализация преобразовывает значение в поддерживаемое. \\
         \hline
     \end{tabulary}
 \end{table}
 
 %\input{reading_order.tex}
 
-\section{Background}
+\section{Предпосылки}
 
-There are several use cases for dedicated debugging hardware, both
-internal to a CPU core and with an external connection.
-This specification addresses the use cases listed below. Implementations
-can choose not to implement every feature, which means some use cases might
-not be supported.
+Существует множество применений для отдельного аппаратного отладчика, как
+встроенного в ядро процессора, так и подключаемого извне.
+Эта спецификация адресована сценариям использования, перечисленным ниже. Имплементации
+могут не поддерживать каждую возможность, так что некоторые варианты использования
+могут не поддерживаться.
 
 \begin{itemize}
 
-\item Debugging low-level software in the absence of an OS or other software.
+\item Отладка низкоуровневого ПО при отсутствии ОС или других програм.
 
-\item Debugging issues in the OS itself.
+\item Отладка проблем в самой ОС.
 
-\item Bootstrapping a hardware platform to test, configure, and program components before
-  there is any executable code path in the hardware platform.
+\item Инициализация аппаратной платформы для тестирования, конфигурации, а также программных
+  компонентов до того, как код будет исполнен на аппаратной платформе.
 
-\item Accessing hardware on a hardware platform without a working CPU.
+\item Получение доступа к компонентам аппаратной платформы без работающего ЦП.
 
 \end{itemize}
 
-In addition, even without a hardware debugging interface,
-architectural support in a RISC-V CPU can aid software debugging and
-performance analysis by allowing hardware triggers and breakpoints.
+Также даже без аппаратного интерфейса отладки архитектурная
+поддержка в процессоре RISC-V поможет в отладке приложений и анализе
+производительности с помощью аппаратных триггеров и точек останова.
 
-\section{Supported Features}
+\section{Возможности}
 
-The debug interface described in this specification supports the following features:
+Отладочный интерфейс, описанный в данной спецификации, поддерживает следующие функции:
 
 \begin{enumerate}
-   \item All hart registers (including CSRs) can be read/written.
-   \item Memory can be accessed either from the hart's point of view, through
-       the system bus directly, or both.
-   \item RV32, RV64, and future RV128 are all supported.
-   \item Any hart in the hardware platform can be independently debugged.
-   \item A debugger can discover almost\footnote{Notable exceptions include
-       information about the memory map and peripherals.} everything it needs
-       to know itself, without user configuration.
-   \item Each hart can be debugged from the very first instruction executed.
-   \item A RISC-V hart can be halted when a software breakpoint instruction is
-       executed.
-   \item Hardware single-step can execute one instruction at a time.
-   \item Debug functionality is independent of the debug transport used.
-   \item The debugger does not need to know anything about the microarchitecture
-       of the harts it is debugging.
+   \item Все регистры hart (включая CSR) могут быть прочитаны/перезаписаны.
+   \item Имеется доступ к памяти как с точки зрения hart, так и напрямую через
+       системную шину.
+   \item Существует поддержка RV32, RV64 и будущего RV128.
+   \item Любой hart в аппаратной платформе может быть отдельно отлажен.
+   \item Отладчик способен найти почти что\footnote{Примечательным исключением
+       является информация о схеме распределия памяти и переферии.} всё, что ему
+       нужно знать сам по себе, без конфигурации пользователем.
+   \item Каждый hart может быть отлажен начиная с самой первой выполненной инструкции.
+   \item Hart в RISC-V можно приостановить, когда исполнена инструкция программной
+       точки останова.
+   \item Железо может исполнить инструкции пошагово.
+   \item Функционал отладчика независим от используемого интерфейса передачи отладочных данных.
+   \item Отладчику не нужно что-либо знать о микроархитектуре отлаживаемого hart.
 
-   \item Arbitrary subsets of harts can be halted and resumed simultaneously.
-       (Optional)
-   \item Arbitrary instructions can be executed on
-       a halted hart. That means no new debug functionality is needed when a
-       core has additional or custom instructions or state, as
-       long as there exist programs
-       that can move that state into GPRs. (Optional)
-   \item Registers can be accessed without halting. (Optional)
-   \item A running hart can be directed to execute a short sequence
-       of instructions, with little overhead. (Optional)
-   \item A system bus master allows memory access without
-       involving any hart. (Optional)
-   \item A RISC-V hart can be halted when a trigger matches the PC,
-       read/write address/data, or an instruction opcode. (Optional)
-    \item Harts can be grouped, and harts in the same group will all halt when
-        any of them halts. These groups can also react to or notify external
-        triggers. (Optional)
+   \item Работа произвольного набора hart может быть одновременно приостановлена или
+       возобновлена. (Опционально)
+   \item Можно выполнить произвольные инструкции на
+Arbitrary instructions can be executed on
+       приостановленном hart. Это значит, что не требуется никакого нового функционала
+       отладчика, когда ядро имеет дополнительные или особые инструкциии или состояния,
+       если существует программы, способные перемещать это состояние в GPR. (Опционально)
+   \item Возможно получить доступ к регистрам без приостановки исполнения кода. (Опционально)
+   \item Работающий hart может быть адресован для исполнения короткого набора
+       инструкций с небольшими издержками. (Опционально)
+   \item Управляющий системной шиной ({\tt нужна помощь с переводом ``system bus master''}) допускает
+       доступ к памяти без использования каких либо hart. (Опционально)
+   \item Hart в RISC-V может быть приостановлен, когда выполняется условие триггера на
+       счётчик инструкций, запись/чтение адреса/данных, или особый опкод инструкции. (Опционально)
+    \item Hart-ы могут быть сгруппированы, и все hart-ы, принадлежащие одной группе приостановятся,
+        когда хотя бы один из них был приостановлен. Эти группы могут вызывать или реагировать на
+        внешние триггеры. (Опционально)
 \end{enumerate}
 
-This document does not suggest a strategy or implementation for hardware test,
-debugging or error detection techniques. Scan, built-in self test (BIST), etc. are out of scope of
-this specification, but this specification does not intend to limit their use
-in RISC-V systems.
+Этот документ не предлагает стратегию или реализацию техник для тестирования, отладки или
+отлавливания ошибок в АО. Сканирование, встроенная самодиагностика (built-in self test, BIST) и прочее
+не рассматриваются в этой спецификации, но она не ограничивает их использование в системах на основе
+RISC-V.
 
-It is possible to debug code that uses software threads, but there is no
-special debug support for it.
+Существует возможность отладки кода, использующего программные потоки, но для них нет
+особой поддержки отладчиком.

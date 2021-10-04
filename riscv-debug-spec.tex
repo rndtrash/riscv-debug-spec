@@ -2,6 +2,12 @@
 \setcounter{tocdepth}{4}
 \setcounter{secnumdepth}{4}
 
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[russian]{babel}
+\selectlanguage{russian}
+\foreignlanguage{english}
+
 % Fix copy/pasting of ligatures in Acrobat
 \input{glyphtounicode.tex}
 \pdfgentounicode=1 %
@@ -77,18 +83,20 @@
 
 \begin{document}
 
-\title{RISC-V Debug Support\\
-Version \versionnum\\
+\title{Поддержка отладки в RISC-V\\
+Версия \versionnum\\
 \GITHash
 }
-\author{Editors: \\
+\author{Редакторы оригинала: \\
 Ernie Edgar \textless ernie.edgar@sifive.com\textgreater, SiFive, Inc. \\
-Tim Newsome \textless tim@sifive.com\textgreater, SiFive, Inc.}
+Tim Newsome \textless tim@sifive.com\textgreater, SiFive, Inc. \\
+Перевод: \\
+Ivan Kuzmenko \textless https://github.com/rndtrash\textgreater }
 \date{\GITAuthorDate}
 \maketitle
 
-Contributors to all versions of the spec in alphabetical order (please contact
-editors to suggest corrections):
+Люди, внёсшие свой вклад во все версии данной спецификации, в
+алфавитном порядке (пожалуйста, свяжитесь с редакторами для внесения поправок):
 Bruce Ableidinger,
 Krste Asanovi\'{c},
 Peter Ashenden,
@@ -134,10 +142,10 @@ Ray Van De Walker,
 Andrew Waterman,
 Thomas Wicki,
 Andy Wright,
-and Bryan Wyatt.
+и Bryan Wyatt.
 
-\markboth{RISC-V Debug Support Version \versionnum}
-{RISC-V Debug Support Version \versionnum}
+\markboth{Поддержка отладки в RISC-V Версия \versionnum}
+{Поддержка отладки в RISC-V Версия \versionnum}
 \thispagestyle{empty}
 
 \frontmatter
@@ -172,7 +180,7 @@ and Bryan Wyatt.
 
 \ifrelease
 \else
-    \chapter{Change Log}
+    \chapter{История изменений}
 
     \begin{versionhistory}
         \input{changelog.tex}
