@@ -2,13 +2,21 @@ name: Verify Build
 on: [push]
 jobs:
     Build:
+        continue-on-error: true
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v2
             - run: sudo apt-get update
             - run: >
-                sudo apt-get install python3-sympy texlive-latex-base \
-                        texlive-latex-recommended texlive-latex-extra \
-                        texlive-fonts-extra texlive-science
+                sudo apt-get install python3-sympy texlive-full
             - run: make
             - run: make chisel
+    UploadLog:
+        if: ${{ always() }}
+        needs: Build
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/upload-artifact@v2
+              with:
+                  name: log
+                  path: riscv-debug-stable.log
