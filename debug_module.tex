@@ -58,58 +58,58 @@ DMI использует от 7 до 32 битов адреса.  Он подд�
 
 Модуль отладки управляется через регистровый доступ к адресному пространству его DMI.
 
-\section{Reset Control} \label{reset}
+\section{Управление сбросом} \label{reset}
 
-There are two methods that allow a debugger to reset harts.
-\FdmDmcontrolNdmreset resets all the harts in the hardware platform, as well as all other
-parts of the hardware platform except for the Debug Modules, Debug Transport Modules,
-and Debug Module Interface.
-Exactly what is affected by this reset is implementation dependent, but it
-must be possible to debug programs from the first instruction executed.
-\FdmDmcontrolHartreset resets all the currently selected harts. In this case an
-implementation may reset more harts than just the ones that are selected. The
-debugger can discover which other harts are reset (if any) by selecting them
-and checking \FdmDmstatusAnyhavereset and \FdmDmstatusAllhavereset.
+Существует два метода, позволяющие отладчику перезагружать hart-ы.
+\FdmDmcontrolNdmreset сбрасывает все hart-ы в аппаратной платформе, а также все остальные
+части аппаратной платформы, кроме модуля отладки, модуля передачи отладочной информации
+и интерфейса модуля отладки.
+Список конкретных компонентов, подвергаемых сбросу зависит от реализации, но должна
+быть возможность отладить программы с самой первой выполняемой инструкции.
+\FdmDmcontrolHartreset сбрасывает все выбранные hart-ы. В данном случае
+реализация может также сбросить другие hart-ы, не выбранные отладчиком.
+Отладчик может определить, какие дополнительные hart-ы сбросились (если такие существуют), выбирая их
+и проверяя \FdmDmstatusAnyhavereset и \FdmDmstatusAllhavereset.
 
-To perform either of these resets, the debugger first asserts the bit, and then
-clears it. The actual reset may start as soon as the bit is asserted, but may
-start an arbitrarily long time after the bit is deasserted. The reset itself
-may also take an arbitrarily long time.  While the reset is
-on-going, harts are either in the running state, indicating it's possible to
-perform some abstract commands during this time, or in the unavailable state,
-indicating it's not possible to perform any abstract commands during this time.
-Once a hart's reset is complete, {\tt havereset} becomes set.  When a hart comes out
-of reset and \FdmDmcontrolHaltreq or \Fresethaltreq are set, the hart will
-immediately enter Debug Mode (halted state).
-Otherwise, if the hart was initially running it will execute normally (running state)
-and if the hart was initially halted it should now be running but may be halted.
+Для того, чтобы использовать перечисленные методы, отладчик сначала устанавливает бит, а затем
+убирает. Сам перезапуск может произойти как только бит был установлен, а
+может и через неопределённо долгий промежуток времени после обнуления бита. Сброс
+также может занять некоторое время.  Пока процесс сброса не завершился,
+hart-ы могут быть как доступными, то есть на данный момент существует возможность
+выполнить некоторые команды, так и недоступными,
+что значит выполнение каких либо команд не представляется возможным.
+Как только сброс hart-а завершается, устанавливается флаг {\tt havereset}.  Когда hart выходит
+из перезагрузки и установлен либо \FdmDmcontrolHaltreq, либо \Fresethaltreq, hart тут же
+перейдёт в режим отладки (в приостановленном состоянии).
+Иначе, если hart изначально работал, он продолжит свою работу (в запущенном состоянии),
+а если hart изначально был приостановлен, он должен запуститься, хотя может остаться остановленным.
 
 \begin{commentary}
-    There is no general, reliable way for the debugger to know when reset has
-    actually begun.
+    Не существует общего и надёжного способа узнать отладчику когда начался
+    сброс.
 \end{commentary}
 
-The Debug Module's own state and registers should only be
-reset at power-up and while
-\FdmDmcontrolDmactive in \RdmDmcontrol is 0. If there is another mechanism to
-reset the DM, this mechanism must also reset all the harts accessible to the
+Состояние самого модуля отладки, а также его регистров должно быть
+сброшенным во время запуска и пока
+\FdmDmcontrolDmactive в \RdmDmcontrol равен 0. Если существует альтернативный механизм
+сброса DM, он также должен сбросить все hart-ы, доступные
 DM.
 
-Due to clock and power domain crossing issues,
-it might not be possible to perform arbitrary DMI accesses across
-hardware platform reset.
-While \FdmDmcontrolNdmreset or any external reset is asserted, the only supported DM
-operations are reading and writing \RdmDmcontrol. The behavior of other accesses
-is undefined.
+Из-за проблем с пересечением доменов синхронизации и питания
+может оказаться невозможным выполнить произвольный доступ DMI
+через сброс аппаратной платформы.
+Пока взведён флаг \FdmDmcontrolNdmreset или подан любой внешний сигнал сброса, над DM
+доступны только операции чтения и записи в \RdmDmcontrol. Поведение при других операциях
+неопределённо.
 
-When harts have been reset, they must set a sticky {\tt havereset} state bit.
-The conceptual {\tt havereset} state bits can be read for selected harts in
-\FdmDmstatusAnyhavereset and \FdmDmstatusAllhavereset in \RdmDmstatus.
-These bits must be set regardless of the cause of the reset.
-The {\tt havereset} bits for the selected harts
-can be cleared by writing 1 to \FdmDmcontrolAckhavereset in \RdmDmcontrol.
-The {\tt havereset} bits might or might not be cleared
-when \FdmDmcontrolDmactive is low.
+Когда сброс hart-ов завершается, они должны задать липкий бит состояния {\tt havereset}.
+Концептуальные биты статуса в {\tt havereset} могут прочесть выбранные hart-ы в
+\FdmDmstatusAnyhavereset и \FdmDmstatusAllhavereset в \RdmDmstatus.
+Эти биты должны быть записанными независимо от причины сброса.
+Биты {\tt havereset} у выбранных hart-ов
+можно очистить, записав 1 в \FdmDmcontrolAckhavereset в \RdmDmcontrol.
+Биты {\tt havereset} могут или не могут быть очищенными,
+когда \FdmDmcontrolDmactive равен 0.
 
 \section{Selecting Harts} \label{selectingharts}
 
